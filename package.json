@@ -1,0 +1,28 @@
+{
+  "name": "weightedtextrank",
+  "version": "1.0.0",
+  "description": "TextRank algorithm from Google syntax data, adapted to prefer shorter sentences",
+  "main": "wTextRank.js",
+  "dependencies": {
+    "chalk": "^2.4.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TheophileMot/weightedTextRank.git"
+  },
+  "keywords": [
+    "TextRank",
+    "computational",
+    "linguistics"
+  ],
+  "author": "Timothy Mott",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/TheophileMot/weightedTextRank/issues"
+  },
+  "homepage": "https://github.com/TheophileMot/weightedTextRank#readme"
+}

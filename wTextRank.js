@@ -1,3 +1,4 @@
+const chalk = require('chalk');
 const fs = require('fs');
 
 function intersect(setA, setB) {
@@ -23,25 +24,32 @@ function displayGraph(graph, iter, error, sentences) {
   console.log('\033[1;1H');
   console.log(`iteration ${iter}                           `);
   console.log(`error     ${error}                          `);
+  console.log();
   let displayData = [];
   for (let v = 0; v < graph.length; v++) {
     displayData[v] = graph[v];
   }
 
   displayData.sort((v, w) => w.score - v.score);
-  for (let v = 0; v < 10; v++) {
-    console.log(`${String(displayData[v].score).padEnd(30)} ${String(displayData[v].index).padEnd(4)} ${sentences[displayData[v].index].text.content.slice(0, 120).padEnd(120)}`);
+  let topScore = displayData[0].score;
+  let bottomScore = displayData[displayData.length - 1].score;
+  for (let v = 0; v < Math.min(20, graph.length); v++) {
+    let relativeScore = (displayData[v].score - bottomScore) / (topScore - bottomScore);
+    let hsv = [120 * relativeScore, 100, 100]
+    console.log(`${chalk.hsv(hsv)(String(displayData[v].score).padEnd(30))} ${String(sentences[displayData[v].index].text.content.length).padStart(4)}  ${sentences[displayData[v].index].text.content.slice(0, 120).padEnd(120)}`);
   }
   console.log('...');
-  for (let v = graph.length - 10; v < graph.length; v++) {
-    console.log(`${String(displayData[v].score).padEnd(30)} ${String(displayData[v].index).padEnd(4)} ${sentences[displayData[v].index].text.content.slice(0, 120).padEnd(120)}`);
+  if (graph.length > 40) {
+    for (let v = graph.length - 20; v < graph.length; v++) {
+      let relativeScore = (displayData[v].score - bottomScore) / (topScore - bottomScore);
+      let hsv = [120 * relativeScore, 100, 100]
+      console.log(`${chalk.hsv(hsv)(String(displayData[v].score).padEnd(30))} ${String(sentences[displayData[v].index].text.content.length).padStart(4)}  ${sentences[displayData[v].index].text.content.slice(0, 120).padEnd(120)}`);
+    }
   }
-  console.log('\n'.repeat(3));
-  // console.log(displayData[0].edges);
 }
 
 function compressSentences(sentences, tokens) {
-  const DESIRABLE_TOKEN_TAGS = ['NOUN', 'ADJ', 'NUM'];
+  const DESIRABLE_TOKEN_TAGS = ['NOUN', 'ADJ'];
 
   let sentencesIndex = 0;
   let startPos = 0;
@@ -92,7 +100,12 @@ function makeGraph(sentences, tokens) {
       if (v !== w) {
         let intersection = intersect(graph[v].tokens, graph[w].tokens);
         if (intersection.size > 0) {
-          weight = intersection.size / (Math.log(graph[v].sentenceLength) + Math.log(graph[v].sentenceLength));
+          // The TextRank algorithm proposes scaling the intersection size down by a factor proportional
+          // to the log of the product of sentence lengths. Here we will not take the log; as a result,
+          // longer sentences are penalized and the top-ranking sentences will be pleasantly short.
+          
+          // weight = intersection.size / (Math.log(graph[v].sentenceLength) + Math.log(graph[w].sentenceLength));
+          weight = intersection.size / (graph[v].sentenceLength * graph[w].sentenceLength);
           totalWeight += weight;
           graph[v].edges.push({
             tail: w,
@@ -117,7 +130,7 @@ async function scoreGraph(graph, sentences) {
   // usually set to 0.85. It controls how much score is transferred from each vertex at each iteration.
   const D = 0.85;
   const MAX_ITERATIONS = 1000;
-  const ERROR_THRESHOLD = 0.001;
+  const ERROR_THRESHOLD = 0.000001;
 
   // iterate until ∆score < threshold for each vertex
   for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
@@ -126,10 +139,8 @@ async function scoreGraph(graph, sentences) {
       let incomingScore = 0;
       for (let e = 0; e < graph[v].edges.length; e++) {
         let w = graph[v].edges[e].tail;
-        // if (v === 0) { console.log(`neighbour ${w} has score ${graph[w].score}`); }
         incomingScore += graph[w].edges.filter(edge => edge.tail === v)[0].weight * graph[w].score;
       }
-      // if (v === 0) { console.log(`incoming ${incomingScore}`); }
       newScore[v] = (1 - D) + D * incomingScore;
     }
 
@@ -140,7 +151,8 @@ async function scoreGraph(graph, sentences) {
     }
     
     displayGraph(graph, iter, worstError, sentences);
-    await sleep(200);
+    await sleep(50);
+    if (worstError < ERROR_THRESHOLD) { break; }
   }
 }
 
