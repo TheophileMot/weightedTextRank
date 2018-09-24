@@ -10,14 +10,19 @@ function intersect(setA, setB) {
   return result;
 }
 
+// note: slow down processing (for display purposes only)
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 function clearScreen() {
   console.log('\033c');
 }
 
-function displayGraph(graph, iter, error) {
+function displayGraph(graph, iter, error, sentences) {
   console.log('\033[1;1H');
-  console.log(`iteration ${iter}`);
-  console.log(`error     ${error}`);
+  console.log(`iteration ${iter}                           `);
+  console.log(`error     ${error}                          `);
   let displayData = [];
   for (let v = 0; v < graph.length; v++) {
     displayData[v] = graph[v];
@@ -25,11 +30,11 @@ function displayGraph(graph, iter, error) {
 
   displayData.sort((v, w) => w.score - v.score);
   for (let v = 0; v < 10; v++) {
-    console.log(displayData[v].score);
+    console.log(`${String(displayData[v].score).padEnd(30)} ${String(displayData[v].index).padEnd(4)} ${sentences[displayData[v].index].text.content.slice(0, 120).padEnd(120)}`);
   }
   console.log('...');
   for (let v = graph.length - 10; v < graph.length; v++) {
-    console.log(displayData[v].score);
+    console.log(`${String(displayData[v].score).padEnd(30)} ${String(displayData[v].index).padEnd(4)} ${sentences[displayData[v].index].text.content.slice(0, 120).padEnd(120)}`);
   }
   console.log('\n'.repeat(3));
   // console.log(displayData[0].edges);
@@ -106,11 +111,12 @@ function makeGraph(sentences, tokens) {
   return graph;
 }
 
-function scoreGraph(graph) {
+// TODO: remove async, sentences parameter, and sleep call; they're there for display only
+async function scoreGraph(graph, sentences) {
   // 0 ≤ D ≤ 1 is the damping factor, a magic number from TextRank paper (following PageRank, q.v.)
   // usually set to 0.85. It controls how much score is transferred from each vertex at each iteration.
-  const D = 1;
-  const MAX_ITERATIONS = 100;
+  const D = 0.85;
+  const MAX_ITERATIONS = 1000;
   const ERROR_THRESHOLD = 0.001;
 
   // iterate until ∆score < threshold for each vertex
@@ -133,7 +139,8 @@ function scoreGraph(graph) {
       graph[v].score = newScore[v];
     }
     
-    displayGraph(graph, iter, worstError);
+    displayGraph(graph, iter, worstError, sentences);
+    await sleep(200);
   }
 }
 
@@ -143,24 +150,9 @@ fs.readFile( __dirname + '/parsedText.txt', (err, data) => {
   }
   textData = JSON.parse(data);
 
-  let goodTokens = {};
-  for (let token of textData.tokens) {
-    if (
-      token.partOfSpeech.tag === 'NUM'
-      || token.partOfSpeech.tag === 'ADJ'
-    ) {
-      let word = token.text.content.toLowerCase();
-      if (goodTokens[word] === undefined) {
-        goodTokens[word] = 1;
-      } else {
-        goodTokens[word] += 1;
-      }
-    }
-  }
-
   clearScreen();
   let graph = makeGraph(textData.sentences, textData.tokens);
-  scoreGraph(graph);
+  scoreGraph(graph, textData.sentences);
 });
 
 
