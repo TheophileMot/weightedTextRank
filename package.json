@@ -1,6 +1,6 @@
 {
   "name": "weightedtextrank",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "TextRank algorithm from Google syntax data, adapted to prefer shorter sentences",
   "main": "wTextRank.js",
   "dependencies": {},
