@@ -3,9 +3,7 @@
   "version": "1.0.0",
   "description": "TextRank algorithm from Google syntax data, adapted to prefer shorter sentences",
   "main": "wTextRank.js",
-  "dependencies": {
-    "chalk": "^2.4.1"
-  },
+  "dependencies": {},
   "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
