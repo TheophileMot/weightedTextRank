@@ -1,5 +1,4 @@
 const WTextRank = require('./wTextRank');
-const chalk = require('chalk');
 const fs = require('fs');
 
 fs.readFile( __dirname + '/parsedText.txt', (err, data) => {
