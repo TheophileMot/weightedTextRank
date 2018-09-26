@@ -1,4 +1,4 @@
-module.exports = function(textData) {
+module.exports = function(textData, tokenWeightFunction = token => 1) {
   const { sentences: dataSentences, tokens: dataTokens } = textData;
 
   this.rankSentences = function() {
@@ -38,11 +38,8 @@ module.exports = function(textData) {
     return vertices;
   }
 
-  // The TextRank algorithm proposes scaling the intersection size down by a factor proportional
-  // to the log of the product of sentence lengths. Here we will not take the log; as a result,
-  // longer sentences are penalized and the top-ranking sentences will be pleasantly short.
-  //
-  // Paper version: weight = intersection.size / (Math.log(vertices[v].text.content.length) + Math.log(vertices[w].text.content.length));
+  // The TextRank algorithm scales the intersection size down by a factor proportional
+  // to the log of the product of sentence lengths.
   this.makeSentenceGraph = function() {
     let vertices = this.matchSentencesWithTokens();
     let outgoingEdges = [];
@@ -54,9 +51,11 @@ module.exports = function(textData) {
         if (v !== w) {
           let intersection = this.intersect(vertices[v].keyTokens, vertices[w].keyTokens);
           if (intersection.size > 0) {
-            // TODO: account for weights of tokens, i.e., replace intersection.size with sum of individual weights
-            weight = intersection.size / (vertices[v].text.content.length * vertices[w].text.content.length);
-            // weight = intersection.size / (Math.log(vertices[v].text.content.length) + Math.log(vertices[w].text.content.length));
+            // If the default weight function is used, all tokens have weight 1, so
+            // totalIntersectionWeight is just the size of the intersection.
+            let totalIntersectionWeight = 0;
+            intersection.forEach(token => totalIntersectionWeight += tokenWeightFunction(token));
+            weight = totalIntersectionWeight / (Math.log(vertices[v].text.content.length) + Math.log(vertices[w].text.content.length));
             totalWeight += weight;
             outgoingEdges[v].push({
               tail: w,
