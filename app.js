@@ -10,8 +10,9 @@ fs.readFile( __dirname + '/parsedText.txt', (err, data) => {
   const WTR = new WTextRank(textData);
 
   let rankedSentences = WTR.rankSentences();
-  let topTen = rankedSentences.slice(0, 10);
-  let worstTen = rankedSentences.slice(-10);
-  console.log(topTen);
-  console.log(worstTen);
+  let bestSentences = rankedSentences.slice(0, 5);
+  let worstSentences = rankedSentences.slice(-5);
+  console.log(bestSentences.map(s => [+s.score.toFixed(2), s.text.content, Array.from(s.keyTokens)]));
+  console.log();
+  console.log(worstSentences.map(s => [+s.score.toFixed(2), s.text.content, Array.from(s.keyTokens)]));
 });

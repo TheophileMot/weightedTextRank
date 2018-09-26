@@ -7,9 +7,10 @@ module.exports = function(textData) {
     return graph;
   }
 
-  this.scoreGraph = function(graph) {
-    // 0 ≤ D ≤ 1 is the damping factor, a magic number from TextRank paper (following PageRank, q.v.)
-    // usually set to 0.85. It controls how much score is transferred from each vertex at each iteration.
+  // Score the vertices using TextRank algorithm: iteratively share score to neighbours until stable.
+  // 0 ≤ D ≤ 1 is the damping factor, a magic number from TextRank paper (following PageRank, q.v.)
+  // usually set to 0.85. It controls how much score is transferred from each vertex at each iteration.
+  this.scoreGraph = function([vertices, outgoingEdges]) {
     const D = 0.85;
     const MAX_ITERATIONS = 1000;
     const ERROR_THRESHOLD = 0.000001;
@@ -17,45 +18,47 @@ module.exports = function(textData) {
     // iterate until ∆score < threshold for each vertex
     for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
       let newScore = [];
-      for (let v = 0; v < graph.length; v++) {
+      for (let v = 0; v < vertices.length; v++) {
         let incomingScore = 0;
-        for (let e = 0; e < graph[v].edges.length; e++) {
-          let w = graph[v].edges[e].tail;
-          incomingScore += graph[w].edges.filter(edge => edge.tail === v)[0].weight * graph[w].score;
+        for (let e = 0; e < outgoingEdges[v].length; e++) {
+          let w = outgoingEdges[v][e].tail;
+          incomingScore += outgoingEdges[w].filter(edge => edge.tail === v)[0].weight * vertices[w].score;
         }
         newScore[v] = (1 - D) + D * incomingScore;
       }
 
       let worstError = -Infinity;
-      for (let v = 0; v < graph.length; v++) {
-        worstError = Math.max(worstError, Math.abs(newScore[v] - graph[v].score));
-        graph[v].score = newScore[v];
+      for (let v = 0; v < vertices.length; v++) {
+        worstError = Math.max(worstError, Math.abs(newScore[v] - vertices[v].score));
+        vertices[v].score = newScore[v];
       }
 
       if (worstError < ERROR_THRESHOLD) { break; }
     }
-    return graph;
+    return vertices;
   }
 
   // The TextRank algorithm proposes scaling the intersection size down by a factor proportional
   // to the log of the product of sentence lengths. Here we will not take the log; as a result,
   // longer sentences are penalized and the top-ranking sentences will be pleasantly short.
   //
-  // Paper version: weight = intersection.size / (Math.log(graph[v].text.length) + Math.log(graph[w].text.length));
+  // Paper version: weight = intersection.size / (Math.log(vertices[v].text.content.length) + Math.log(vertices[w].text.content.length));
   this.makeSentenceGraph = function() {
-    let graph = this.matchSentencesWithTokens();
-    for (let v = 0; v < graph.length; v++) {
-      graph[v].score = 1;
-      graph[v].edges = [];
+    let vertices = this.matchSentencesWithTokens();
+    let outgoingEdges = [];
+    for (let v = 0; v < vertices.length; v++) {
+      vertices[v].score = 1;
+      outgoingEdges[v] = [];
       totalWeight = 0;
-      for (let w = 0; w < graph.length; w++) {
+      for (let w = 0; w < vertices.length; w++) {
         if (v !== w) {
-          let intersection = this.intersect(graph[v].keyTokens, graph[w].keyTokens);
+          let intersection = this.intersect(vertices[v].keyTokens, vertices[w].keyTokens);
           if (intersection.size > 0) {
             // TODO: account for weights of tokens, i.e., replace intersection.size with sum of individual weights
-            weight = intersection.size / (graph[v].text.length * graph[w].text.length);
+            weight = intersection.size / (vertices[v].text.content.length * vertices[w].text.content.length);
+            // weight = intersection.size / (Math.log(vertices[v].text.content.length) + Math.log(vertices[w].text.content.length));
             totalWeight += weight;
-            graph[v].edges.push({
+            outgoingEdges[v].push({
               tail: w,
               weight,
             });
@@ -63,12 +66,12 @@ module.exports = function(textData) {
         }
       }
       // normalize outgoing edge weights
-      for (let edge of graph[v].edges) {
+      for (let edge of outgoingEdges[v]) {
         edge.weight /= totalWeight;
       }
     }
 
-    return graph;
+    return [vertices, outgoingEdges];
   }
 
   // The Google API gives a single array of tokens without saying which sentence belong to; we need to
