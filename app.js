@@ -7,9 +7,11 @@ fs.readFile( __dirname + '/parsedText.txt', (err, data) => {
   }
   textData = JSON.parse(data);
 
-  const WTR = new WTextRank(textData.sentences, textData.tokens);
-  let topTen = WTR.rankSentences().slice(0, 10);
-  let worstTen = WTR.rankSentences().slice(-10);
+  const WTR = new WTextRank(textData);
+
+  let rankedSentences = WTR.rankSentences();
+  let topTen = rankedSentences.slice(0, 10);
+  let worstTen = rankedSentences.slice(-10);
   console.log(topTen);
   console.log(worstTen);
 });
