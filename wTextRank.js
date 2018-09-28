@@ -1,10 +1,22 @@
-module.exports = function(textData, tokenWeightFunction = token => 1) {
+module.exports = function(textData, tokenWeightFunction = (tokenIndex, sentence) => 1) {
   const { sentences: dataSentences, tokens: dataTokens } = textData;
 
   this.rankSentences = function() {
-    let graph = this.scoreGraph(this.makeSentenceGraph());
+    let matchedSentences = this.matchSentencesWithTokens();
+    let sentenceWeights = matchedSentences.map(sentence => this.weightSentence(sentence));
+    let graph = this.makeSentenceGraph(matchedSentences, sentenceWeights);
+    graph = this.scoreGraph(graph);
     graph.sort((v, w) => w.score - v.score);
     return graph;
+  }
+
+  this.weightSentence = function(sentence) {
+    let totalWeight = 1;
+    for (let tokenIndex = 0; tokenIndex < sentence.tokens.length; tokenIndex++) {
+      totalWeight *= tokenWeightFunction(tokenIndex, sentence);
+    }
+    console.log(`${sentence.text.content} : ${totalWeight}`)
+    return totalWeight;
   }
 
   // Score the vertices using TextRank algorithm: iteratively share score to neighbours until stable.
@@ -38,10 +50,9 @@ module.exports = function(textData, tokenWeightFunction = token => 1) {
     return vertices;
   }
 
-  // The TextRank algorithm scales the intersection size down by a factor proportional
-  // to the log of the product of sentence lengths.
-  this.makeSentenceGraph = function() {
-    let vertices = this.matchSentencesWithTokens();
+  // Make a graph with vertices representing sentences; calculate edge weights according to
+  // overlapping key tokens.
+  this.makeSentenceGraph = function(vertices, sentenceWeights) {
     let outgoingEdges = [];
     for (let v = 0; v < vertices.length; v++) {
       vertices[v].score = 1;
@@ -51,11 +62,8 @@ module.exports = function(textData, tokenWeightFunction = token => 1) {
         if (v !== w) {
           let intersection = this.intersect(vertices[v].keyTokens, vertices[w].keyTokens);
           if (intersection.size > 0) {
-            // If the default weight function is used, all tokens have weight 1, so
-            // totalIntersectionWeight is just the size of the intersection.
-            let totalIntersectionWeight = 0;
-            intersection.forEach(token => totalIntersectionWeight += tokenWeightFunction(token));
-            weight = totalIntersectionWeight / (Math.log(vertices[v].text.content.length) + Math.log(vertices[w].text.content.length));
+            weight = intersection.size / (Math.log(vertices[v].text.content.length) + Math.log(vertices[w].text.content.length));
+            weight *= sentenceWeights[v] * sentenceWeights[w];
             totalWeight += weight;
             outgoingEdges[v].push({
               tail: w,

@@ -1,4 +1,5 @@
-parsedText.txt
+test.js
+*.txt
 
 # Logs
 logs
