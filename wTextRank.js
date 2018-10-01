@@ -15,7 +15,7 @@ module.exports = function(textData, tokenWeightFunction = (tokenIndex, sentence)
     for (let tokenIndex = 0; tokenIndex < sentence.tokens.length; tokenIndex++) {
       totalWeight *= tokenWeightFunction(tokenIndex, sentence);
     }
-    console.log(`${sentence.text.content} : ${totalWeight}`)
+    // console.log(`${sentence.text.content} : ${totalWeight}`)
     return totalWeight;
   }
 
